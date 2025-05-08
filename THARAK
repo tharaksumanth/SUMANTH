@@ -1,0 +1,259 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_USERS 100
+
+typedef struct RechargeNode {
+    float amount;
+    char date[20];
+    struct RechargeNode* next;
+} RechargeNode;
+
+typedef struct {
+    char name[50];
+    char phoneNumber[15];
+    char email[50];
+    char operator[20];
+    int validityDays;
+    float balance;
+    RechargeNode* historyHead;
+} User;
+
+User users[MAX_USERS];
+int userCount = 0;
+
+void addUser(char* name, char* phoneNumber, char* email, char* operator, int validity) {
+    if (userCount >= MAX_USERS) {
+        printf("User limit reached!\n");
+        return;
+    }
+
+    for (int i = 0; i < userCount; i++) {
+        if (strcmp(users[i].phoneNumber, phoneNumber) == 0) {
+            printf("User already exists!\n");
+            return;
+        }
+    }
+
+    strcpy(users[userCount].name, name);
+    strcpy(users[userCount].phoneNumber, phoneNumber);
+    strcpy(users[userCount].email, email);
+    strcpy(users[userCount].operator, operator);
+    users[userCount].validityDays = validity;
+    users[userCount].balance = 0.0;
+    users[userCount].historyHead = NULL;
+    userCount++;
+
+    printf("User added successfully!\n");
+}
+
+int findUser(char* phoneNumber) {
+    for (int i = 0; i < userCount; i++) {
+        if (strcmp(users[i].phoneNumber, phoneNumber) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void addRechargeHistory(User* user, float amount, const char* date) {
+    RechargeNode* newNode = (RechargeNode*)malloc(sizeof(RechargeNode));
+    newNode->amount = amount;
+    strcpy(newNode->date, date);
+    newNode->next = user->historyHead;
+    user->historyHead = newNode;
+}
+
+void recharge(char* phoneNumber, float amount, const char* date) {
+    int userIndex = findUser(phoneNumber);
+    if (userIndex != -1) {
+        users[userIndex].balance += amount;
+        users[userIndex].validityDays += 28; // Recharge adds 28 days
+        addRechargeHistory(&users[userIndex], amount, date);
+        printf("Recharge successful! New balance for %s: %.2f\n", phoneNumber, users[userIndex].balance);
+    } else {
+        printf("User not found!\n");
+    }
+}
+
+void displayBalance(char* phoneNumber) {
+    int userIndex = findUser(phoneNumber);
+    if (userIndex != -1) {
+        printf("User: %s\nPhone: %s\nBalance: %.2f\nValidity: %d days\n",
+               users[userIndex].name,
+               users[userIndex].phoneNumber,
+               users[userIndex].balance,
+               users[userIndex].validityDays);
+    } else {
+        printf("User not found!\n");
+    }
+}
+
+void updateUser(char* phoneNumber) {
+    int index = findUser(phoneNumber);
+    if (index == -1) {
+        printf("User not found!\n");
+        return;
+    }
+
+    printf("Enter new name: ");
+    scanf(" %[^\n]", users[index].name);
+    printf("Enter new email: ");
+    scanf("%s", users[index].email);
+    printf("Enter new operator: ");
+    scanf("%s", users[index].operator);
+    printf("Update successful!\n");
+}
+
+void deleteUser(char* phoneNumber) {
+    int index = findUser(phoneNumber);
+    if (index == -1) {
+        printf("User not found!\n");
+        return;
+    }
+
+    // Free recharge history
+    RechargeNode* temp = users[index].historyHead;
+    while (temp != NULL) {
+        RechargeNode* toDelete = temp;
+        temp = temp->next;
+        free(toDelete);
+    }
+
+    for (int i = index; i < userCount - 1; i++) {
+        users[i] = users[i + 1];
+    }
+
+    userCount--;
+    printf("User deleted successfully!\n");
+}
+
+void showRechargeHistory(char* phoneNumber) {
+    int index = findUser(phoneNumber);
+    if (index == -1) {
+        printf("User not found!\n");
+        return;
+    }
+
+    RechargeNode* current = users[index].historyHead;
+    if (!current) {
+        printf("No recharge history for this user.\n");
+        return;
+    }
+
+    printf("Recharge History for %s:\n", users[index].name);
+    while (current) {
+        printf("Amount: %.2f | Date: %s\n", current->amount, current->date);
+        current = current->next;
+    }
+}
+
+void displayAllUsers() {
+    if (userCount == 0) {
+        printf("No users found.\n");
+        return;
+    }
+
+    printf("\n--- All Registered Users ---\n");
+    for (int i = 0; i < userCount; i++) {
+        printf("%d. %s | %s | %s | %s | Balance: %.2f | Validity: %d days\n",
+               i + 1,
+               users[i].name,
+               users[i].phoneNumber,
+               users[i].email,
+               users[i].operator,
+               users[i].balance,
+               users[i].validityDays);
+    }
+}
+
+void clearInputBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+int main() {
+    int choice;
+    char phoneNumber[15], name[50], email[50], operator[20], date[20];
+    int validity;
+    float amount;
+
+    while (1) {
+        printf("\n=== SIM Recharge Portal ===\n");
+        printf("1. Add New User\n");
+        printf("2. Recharge\n");
+        printf("3. Check Balance\n");
+        printf("4. Show Recharge History\n");
+        printf("5. Update User Info\n");
+        printf("6. Delete User\n");
+        printf("7. Display All Users\n");
+        printf("8. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+        clearInputBuffer();
+
+        switch (choice) {
+            case 1:
+                printf("Enter name: ");
+                scanf(" %[^\n]", name);
+                printf("Enter phone number: ");
+                scanf("%s", phoneNumber);
+                printf("Enter email: ");
+                scanf("%s", email);
+                printf("Enter operator: ");
+                scanf("%s", operator);
+                printf("Enter validity (days): ");
+                scanf("%d", &validity);
+                addUser(name, phoneNumber, email, operator, validity);
+                break;
+
+            case 2:
+                printf("Enter phone number: ");
+                scanf("%s", phoneNumber);
+                printf("Enter amount to recharge: ");
+                scanf("%f", &amount);
+                printf("Enter date (DD-MM-YYYY): ");
+                scanf("%s", date);
+                recharge(phoneNumber, amount, date);
+                break;
+
+            case 3:
+                printf("Enter phone number: ");
+                scanf("%s", phoneNumber);
+                displayBalance(phoneNumber);
+                break;
+
+            case 4:
+                printf("Enter phone number: ");
+                scanf("%s", phoneNumber);
+                showRechargeHistory(phoneNumber);
+                break;
+
+            case 5:
+                printf("Enter phone number to update: ");
+                scanf("%s", phoneNumber);
+                updateUser(phoneNumber);
+                break;
+
+            case 6:
+                printf("Enter phone number to delete: ");
+                scanf("%s", phoneNumber);
+                deleteUser(phoneNumber);
+                break;
+
+            case 7:
+                displayAllUsers();
+                break;
+
+            case 8:
+                printf("Exiting...\n");
+                return 0;
+
+            default:
+                printf("Invalid choice! Try again.\n");
+        }
+    }
+
+    return 0;
+}
